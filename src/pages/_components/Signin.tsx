@@ -27,8 +27,8 @@ const SignInForm = () => {
         setEmailError('Please Enter Your Email');
       }
     
-    if (password.length < 6 && password.length != 0) {
-      setPasswordError('Password must be at least 6 characters');
+    if (password.length < 8 && password.length != 0) {
+      setPasswordError('Password must be at least 8 characters');
     }
     if (password.length == 0) {
         setPasswordError('Please Enter Your Password');
@@ -52,7 +52,7 @@ const SignInForm = () => {
       {/* Sign in header */}
       <h1 className="text-2xl font-semibold text-center mb-2">Sign in</h1>
       <p className="text-gray-500 text-center mb-8">
-        Please login to continue to your account.
+        Sign in and see our features!
       </p>
 
       {/* Form */}
