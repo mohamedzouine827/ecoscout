@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { supabase } from '@/libs/supabase';  // Import the Supabase client
 
 const SignInForm = () => {
   const [email, setEmail] = useState('');
@@ -12,8 +11,8 @@ const SignInForm = () => {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-  // Submit form data to Supabase
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Form submission handler
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     // Reset errors
@@ -39,35 +38,13 @@ const SignInForm = () => {
       setPasswordError('Password Incorrect');
     }
 
-    // If there are no validation errors, proceed to insert the data into Supabase
+    // If there are no validation errors, log the form data
     if (!emailError && !passwordError) {
-      try {
-        // Create an array of objects to insert (you can add more rows here)
-        const rowsToInsert = [
-          { email, password },
-          { email: 'example2@example.com', password: 'password2' }, // Example second row
-          { email: 'example3@example.com', password: 'password3' }, // Example third row
-        ];
-
-        // Insert multiple rows into the 'ECO' table
-        const { data, error } = await supabase
-          .from('ECO')  // Ensure this matches your table name in Supabase
-          .insert(rowsToInsert)
-          .select();
-
-        if (error) {
-          console.error('Supabase insert error:', error.message);
-          throw error;
-        }
-
-        console.log('User data inserted:', data);  // Log the inserted data for confirmation
-
-        // Optionally, clear the form
-        setEmail('');
-        setPassword('');
-      } catch (error) {
-        console.error('Error inserting data into Supabase:', error.message);
-      }
+      console.log('Form Submitted:', { email, password });
+      
+      // Optionally, clear the form
+      setEmail('');
+      setPassword('');
     }
   };
 
@@ -95,8 +72,8 @@ const SignInForm = () => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
             className={`w-full px-4 py-3 rounded-lg border ${
-              emailError 
-                ? 'border-red-500 focus:border-red-500' 
+              emailError
+                ? 'border-red-500 focus:border-red-500'
                 : 'border-blue-200 focus:border-blue-500'
             } focus:outline-none`}
           />
@@ -114,8 +91,8 @@ const SignInForm = () => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
               className={`w-full px-4 py-3 rounded-lg border ${
-                passwordError 
-                  ? 'border-red-500 focus:border-red-500' 
+                passwordError
+                  ? 'border-red-500 focus:border-red-500'
                   : 'border-blue-200 focus:border-blue-500'
               } focus:outline-none`}
             />

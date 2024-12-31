@@ -11,6 +11,6 @@ const geistMono = Plus_Jakarta_Sans({
 export default function Home() {
  
   return (
-    <SignInForm/>
+    <SignUpForm/>
   );
 }

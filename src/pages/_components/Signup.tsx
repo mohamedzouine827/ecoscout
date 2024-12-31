@@ -1,36 +1,18 @@
 import React, { useState, ChangeEvent, FormEvent } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 
-interface FormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-}
-
-interface FormErrors {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  password?: string;
-  confirmPassword?: string;
-  terms?: string;
-  general?: string;
-}
-
-interface DatabaseCheckResult {
-  emailExists: boolean;
-  nameExists: boolean;
-}
-
-interface CreateUserResult {
-  success: boolean;
-  error?: string;
-}
+// Fetch wrapper
+const fetchAPI = async (url: string, method: string, body?: any) => {
+  const response = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return response.json();
+};
 
 const SignUpForm: React.FC = () => {
-  const initialFormData: FormData = {
+  const initialFormData = {
     firstName: '',
     lastName: '',
     email: '',
@@ -38,144 +20,101 @@ const SignUpForm: React.FC = () => {
     confirmPassword: '',
   };
 
-  // Form data state
-  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [formData, setFormData] = useState(initialFormData);
+  const [showPassword, setShowPassword] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<{ [key: string]: string | undefined }>({});
 
-  // UI states
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [acceptTerms, setAcceptTerms] = useState<boolean>(false);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  
-  // Error states
-  const [errors, setErrors] = useState<FormErrors>({});
+  const validateForm = () => {
+    const newErrors: { [key: string]: string } = {};
 
-  // Database check function - to be implemented
-  const checkExistingUser = async (): Promise<DatabaseCheckResult> => {
-    // TODO: Implement your database check logic here
-    return {
-      emailExists: false,
-      nameExists: false
-    };
-  };
-
-  // Create user function - to be implemented
-  const createUser = async (): Promise<CreateUserResult> => {
-    // TODO: Implement your database creation logic here
-    return {
-      success: true
-    };
-  };
-
-  const validateForm = async (): Promise<FormErrors> => {
-    const newErrors: FormErrors = {};
-  
-    // First Name validation
     if (!formData.firstName.trim()) {
       newErrors.firstName = 'First name is required';
-    } else if (formData.firstName.length < 2) {
-      newErrors.firstName = 'First name must be at least 2 characters';
-    } else if (!/^[a-zA-Z\s-']+$/.test(formData.firstName)) {
-      newErrors.firstName = 'First name can only contain letters, spaces, hyphens, and apostrophes';
     }
-  
-    // Last Name validation
+
     if (!formData.lastName.trim()) {
       newErrors.lastName = 'Last name is required';
-    } else if (formData.lastName.length < 2) {
-      newErrors.lastName = 'Last name must be at least 2 characters';
-    } else if (!/^[a-zA-Z\s-']+$/.test(formData.lastName)) {
-      newErrors.lastName = 'Last name can only contain letters, spaces, hyphens, and apostrophes';
     }
-  
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const restrictedEmails = ['test@test.com', 'test@gmail.com'];
-    
-    if (!formData.email) {
+
+    if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    } else if (restrictedEmails.includes(formData.email.toLowerCase())) {
-      newErrors.email = 'This email address is not allowed';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Invalid email format';
     }
-  
-    // Password validation
-    if (!formData.password) {
+
+    if (!formData.password.trim()) {
       newErrors.password = 'Password is required';
-    } else {
-      if (formData.password.length < 8) {
-        newErrors.password = 'Password must be at least 8 characters';
-      }
-      if (!/(?=.*[a-z])/.test(formData.password)) {
-        newErrors.password = 'Password must contain at least one lowercase letter';
-      }
-      if (!/(?=.*[A-Z])/.test(formData.password)) {
-        newErrors.password = 'Password must contain at least one uppercase letter';
-      }
-      if (!/(?=.*\d)/.test(formData.password)) {
-        newErrors.password = 'Password must contain at least one number';
-      }
-      if (!/(?=.*[!@#$%^&*])/.test(formData.password)) {
-        newErrors.password = 'Password must contain at least one special character';
-      }
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
     }
-  
-    // Confirm Password validation
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.confirmPassword !== formData.password) {
+
+    if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
-  
-    // Terms validation
+
     if (!acceptTerms) {
       newErrors.terms = 'You must accept the terms and conditions';
     }
-  
+
     return newErrors;
+  };
+
+  const checkExistingUser = async () => {
+    const result = await fetchAPI('/api/check-user', 'POST', { email: formData.email });
+    return result;
+  };
+  
+  const createUser = async () => {
+    const result = await fetchAPI('/api/create-user', 'POST', {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      password: formData.password,
+    });
+    return result;
   };
   
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrors({});
 
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      const validationErrors = await validateForm();
-      
-      if (Object.keys(validationErrors).length > 0) {
-        setErrors(validationErrors);
+      const { emailExists } = await checkExistingUser();
+      if (emailExists) {
+        setErrors({ email: 'Email is already in use' });
         return;
       }
 
-      // Here you will implement your database logic
-      console.log('Form data ready for database:', formData);
-      
-      // Placeholder for success redirect
-      alert('Form validated successfully! Ready for database integration.');
-      
-    } catch (error) {
-      setErrors({
-        general: 'An unexpected error occurred. Please try again later.'
-      });
+      const { success, error } = await createUser();
+      if (!success) {
+        throw new Error(error || 'Failed to create account');
+      }
+
+      alert('Account created successfully!');
+      setFormData(initialFormData);
+      setAcceptTerms(false);
+    } catch (error: any) {
+      setErrors({ general: error.message });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear error when user starts typing
-    if (errors[name as keyof FormErrors]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: undefined
-      }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
@@ -189,9 +128,7 @@ const SignUpForm: React.FC = () => {
       </div>
 
       <h1 className="text-2xl font-semibold text-center mb-2">Create Account</h1>
-      <p className="text-gray-500 text-center mb-8">
-        Please fill in your information to create an account
-      </p>
+      <p className="text-gray-500 text-center mb-8">Please fill in your information to create an account</p>
 
       {errors.general && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -200,150 +137,102 @@ const SignUpForm: React.FC = () => {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Name Fields */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <input
-              type="text"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              placeholder="First Name"
-              disabled={isSubmitting}
-              className={`w-full px-4 py-3 rounded-lg border ${
-                errors.firstName ? 'border-red-500' : 'border-blue-200'
-              } focus:outline-none focus:border-blue-500 disabled:bg-gray-100`}
-            />
-            {errors.firstName && (
-              <p className="text-red-500 text-sm">{errors.firstName}</p>
-            )}
-          </div>
-
-          <div className="space-y-1">
-            <input
-              type="text"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              placeholder="Last Name"
-              disabled={isSubmitting}
-              className={`w-full px-4 py-3 rounded-lg border ${
-                errors.lastName ? 'border-red-500' : 'border-blue-200'
-              } focus:outline-none focus:border-blue-500 disabled:bg-gray-100`}
-            />
-            {errors.lastName && (
-              <p className="text-red-500 text-sm">{errors.lastName}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Email field */}
-        <div className="space-y-1">
           <input
-            type="email"
-            name="email"
-            value={formData.email}
+            type="text"
+            name="firstName"
+            value={formData.firstName}
             onChange={handleChange}
-            placeholder="Email"
+            placeholder="First Name"
             disabled={isSubmitting}
             className={`w-full px-4 py-3 rounded-lg border ${
-              errors.email ? 'border-red-500' : 'border-blue-200'
-            } focus:outline-none focus:border-blue-500 disabled:bg-gray-100`}
+              errors.firstName ? 'border-red-500' : 'border-blue-200'
+            }`}
           />
-          {errors.email && (
-            <p className="text-red-500 text-sm">{errors.email}</p>
-          )}
+          {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
+
+          <input
+            type="text"
+            name="lastName"
+            value={formData.lastName}
+            onChange={handleChange}
+            placeholder="Last Name"
+            disabled={isSubmitting}
+            className={`w-full px-4 py-3 rounded-lg border ${
+              errors.lastName ? 'border-red-500' : 'border-blue-200'
+            }`}
+          />
+          {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
         </div>
 
-        {/* Password fields */}
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Password"
-                disabled={isSubmitting}
-                className={`w-full px-4 py-3 rounded-lg border ${
-                  errors.password ? 'border-red-500' : 'border-blue-200'
-                } focus:outline-none focus:border-blue-500 disabled:bg-gray-100`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                disabled={isSubmitting}
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-            {errors.password && (
-              <p className="text-red-500 text-sm">{errors.password}</p>
-            )}
-          </div>
+        <input
+          type="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          placeholder="Email"
+          disabled={isSubmitting}
+          className={`w-full px-4 py-3 rounded-lg border ${
+            errors.email ? 'border-red-500' : 'border-blue-200'
+          }`}
+        />
+        {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
 
-          <div className="space-y-1">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Confirm Password"
-              disabled={isSubmitting}
-              className={`w-full px-4 py-3 rounded-lg border ${
-                errors.confirmPassword ? 'border-red-500' : 'border-blue-200'
-              } focus:outline-none focus:border-blue-500 disabled:bg-gray-100`}
-            />
-            {errors.confirmPassword && (
-              <p className="text-red-500 text-sm">{errors.confirmPassword}</p>
-            )}
-          </div>
+        <div className="relative">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            placeholder="Password"
+            disabled={isSubmitting}
+            className={`w-full px-4 py-3 rounded-lg border ${
+              errors.password ? 'border-red-500' : 'border-blue-200'
+            }`}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
         </div>
+        {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
 
-        {/* Terms and conditions */}
-        <div className="space-y-1">
-          <label className="flex items-center text-gray-600">
-            <input
-              type="checkbox"
-              checked={acceptTerms}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                setAcceptTerms(e.target.checked);
-                if (e.target.checked && errors.terms) {
-                  setErrors(prev => ({
-                    ...prev,
-                    terms: undefined
-                  }));
-                }
-              }}
-              disabled={isSubmitting}
-              className="mr-2 h-4 w-4 rounded border-gray-300"
-            />
-            <span className="text-sm">I accept the terms and conditions</span>
-          </label>
-          {errors.terms && (
-            <p className="text-red-500 text-sm">{errors.terms}</p>
-          )}
-        </div>
+        <input
+          type={showPassword ? 'text' : 'password'}
+          name="confirmPassword"
+          value={formData.confirmPassword}
+          onChange={handleChange}
+          placeholder="Confirm Password"
+          disabled={isSubmitting}
+          className={`w-full px-4 py-3 rounded-lg border ${
+            errors.confirmPassword ? 'border-red-500' : 'border-blue-200'
+          }`}
+        />
+        {errors.confirmPassword && <p className="text-red-500 text-sm">{errors.confirmPassword}</p>}
 
-        {/* Sign up button */}
+        <label className="flex items-center">
+          <input
+            type="checkbox"
+            checked={acceptTerms}
+            onChange={(e) => setAcceptTerms(e.target.checked)}
+            disabled={isSubmitting}
+            className="mr-2"
+          />
+          <span className="text-sm">I accept the terms and conditions</span>
+        </label>
+        {errors.terms && <p className="text-red-500 text-sm">{errors.terms}</p>}
+
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400"
+          className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700"
         >
           {isSubmitting ? 'Creating Account...' : 'Create Account'}
         </button>
       </form>
-
-      {/* Sign in link */}
-      <p className="text-center mt-6 text-gray-600">
-        Already have an account?{' '}
-        <a href="#" className="text-blue-600 hover:underline">
-          Sign in
-        </a>
-      </p>
     </div>
   );
 };
