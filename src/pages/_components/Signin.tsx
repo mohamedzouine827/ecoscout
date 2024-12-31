@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { supabase } from '@/libs/supabase';  // Import the Supabase client
 
 const SignInForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
-  
+
   // Error states
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-  // Example validation - you would replace these with your actual DB checks
-  const handleSubmit = async (e) => {
+  // Submit form data to Supabase
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Reset errors
     setEmailError('');
     setPasswordError('');
@@ -23,19 +24,50 @@ const SignInForm = () => {
     if (email === 'test@test.com') {
       setEmailError('Email has been used!');
     }
-    if (email.length == 0) {
-        setEmailError('Please Enter Your Email');
-      }
-    
-    if (password.length < 8 && password.length != 0) {
+    if (email.length === 0) {
+      setEmailError('Please Enter Your Email');
+    }
+
+    if (password.length < 8 && password.length !== 0) {
       setPasswordError('Password must be at least 8 characters');
     }
-    if (password.length == 0) {
-        setPasswordError('Please Enter Your Password');
-      }
+    if (password.length === 0) {
+      setPasswordError('Please Enter Your Password');
+    }
 
     if (password === 'mohamed') {
-        setPasswordError('Password Incorrect');
+      setPasswordError('Password Incorrect');
+    }
+
+    // If there are no validation errors, proceed to insert the data into Supabase
+    if (!emailError && !passwordError) {
+      try {
+        // Create an array of objects to insert (you can add more rows here)
+        const rowsToInsert = [
+          { email, password },
+          { email: 'example2@example.com', password: 'password2' }, // Example second row
+          { email: 'example3@example.com', password: 'password3' }, // Example third row
+        ];
+
+        // Insert multiple rows into the 'ECO' table
+        const { data, error } = await supabase
+          .from('ECO')  // Ensure this matches your table name in Supabase
+          .insert(rowsToInsert)
+          .select();
+
+        if (error) {
+          console.error('Supabase insert error:', error.message);
+          throw error;
+        }
+
+        console.log('User data inserted:', data);  // Log the inserted data for confirmation
+
+        // Optionally, clear the form
+        setEmail('');
+        setPassword('');
+      } catch (error) {
+        console.error('Error inserting data into Supabase:', error.message);
+      }
     }
   };
 
@@ -51,15 +83,12 @@ const SignInForm = () => {
 
       {/* Sign in header */}
       <h1 className="text-2xl font-semibold text-center mb-2">Sign in</h1>
-      <p className="text-gray-500 text-center mb-8">
-        Sign in and see our features!
-      </p>
+      <p className="text-gray-500 text-center mb-8">Sign in and see our features!</p>
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Email field */}
         <div className="space-y-1">
-  
           <input
             type="email"
             value={email}
@@ -78,7 +107,6 @@ const SignInForm = () => {
 
         {/* Password field */}
         <div className="space-y-1">
-
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
