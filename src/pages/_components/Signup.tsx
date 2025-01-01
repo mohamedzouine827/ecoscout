@@ -8,6 +8,7 @@ const fetchAPI = async (url: string, method: string, body?: any) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+
   return response.json();
 };
 
@@ -60,22 +61,6 @@ const SignUpForm: React.FC = () => {
     return newErrors;
   };
 
-  const checkExistingUser = async () => {
-    const result = await fetchAPI('/api/check-user', 'POST', { email: formData.email });
-    return result;
-  };
-  
-  const createUser = async () => {
-    const result = await fetchAPI('/api/create-user', 'POST', {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      password: formData.password,
-    });
-    return result;
-  };
-  
-
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -89,13 +74,21 @@ const SignUpForm: React.FC = () => {
     }
 
     try {
-      const { emailExists } = await checkExistingUser();
+      // Check if the email already exists
+      const { success: emailExists } = await fetchAPI('/api/check-user', 'POST', { email: formData.email });
       if (emailExists) {
         setErrors({ email: 'Email is already in use' });
         return;
       }
 
-      const { success, error } = await createUser();
+      // Create the user
+      const { success, error } = await fetchAPI('/api/create-user', 'POST', {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+      });
+
       if (!success) {
         throw new Error(error || 'Failed to create account');
       }

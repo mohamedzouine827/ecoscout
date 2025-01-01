@@ -6,17 +6,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'POST') {
     const { firstName, lastName, email, password } = req.body;
 
-    // Log the request body to verify the data
-    console.log('Request body:', req.body);
-
+    // Validate required fields
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({ success: false, error: 'All fields are required' });
     }
 
     try {
       // Check if the email already exists
-      const existingUser = await query('SELECT * FROM users WHERE email = $1', [email]);
-      if (existingUser.rows.length > 0) {
+      const existingUser = await query('SELECT 1 FROM users WHERE email = $1 LIMIT 1', [email]);
+      if (existingUser.rowCount > 0) {
         return res.status(400).json({ success: false, error: 'Email is already in use' });
       }
 
@@ -32,7 +30,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Return the created user data
       res.status(201).json({ success: true, data: result.rows[0] });
     } catch (error) {
-      // Log the full error for better debugging
       console.error('Error creating user:', error);
       res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
